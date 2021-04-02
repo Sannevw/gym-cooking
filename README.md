@@ -1,4 +1,4 @@
-# Code for OvercookedEnvironment (gym-cooking) and "Too many cooks: Bayesian inference for coordinating multi-agent collaboration"
+# Modified Code for OvercookedEnvironment (gym-cooking) using simple Q-Learning"
 
 A modified version of the code from ["Too many cooks: Bayesian inference for coordinating multi-agent collaboration"](https://arxiv.org/pdf/2003.11778.pdf), to let a single agent train using Simple Q-learning, for a simplified environment.
 
