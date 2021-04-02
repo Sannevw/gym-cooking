@@ -60,8 +60,8 @@ def initialize_agents(arglist):
                 phase += 1
 
             # phase 2: read in recipe list
-            elif phase == 1:
-                recipes.append(globals()[line]())
+            elif phase == 2:
+                recipes.appendphase ==(globals()[line]())
 
             # phase 3: read in agent locations (up to num_agents)
             elif phase == 3:
@@ -86,14 +86,14 @@ def read_recipe(arglist):
                 phase += 1
 
             # phase 2: read in recipe list
-            elif phase == 1:
+            elif phase == 2:
                 recipes.append(globals()[line]())
     return recipes
 
 def main_loop(arglist):
     """The main loop for running experiments."""
     print("Initializing environment and agents.")
-    env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
+    env = gym.envs.make("gym_cooking:overcookedEnv-v1", arglist=arglist)
 
     obs = env.reset()
 
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     assert 0.0 <= arglist.lr <= 1.0, "should be between 0.0 and 1.0"
  
     if arglist.play:
-        env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
+        env = gym.envs.make("gym_cooking:overcookedEnv-v1", arglist=arglist)
         env.reset()
         recipe = read_recipe(arglist)
         game = GamePlay(env.filename, env.world, env.sim_agents, recipe)

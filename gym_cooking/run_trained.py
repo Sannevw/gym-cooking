@@ -93,7 +93,7 @@ def initialize_agents(arglist):
                 phase += 1
 
             # phase 2: read in recipe list
-            elif phase == 1:
+            elif phase == 2:
                 recipes.append(globals()[line]())
 
             # phase 3: read in agent locations (up to num_agents)
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     qtable = get_qtable(data)
 
     print("===Initializing environment and agents.===")
-    env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
+    env = gym.envs.make("gym_cooking:overcookedEnv-v1", arglist=arglist)
 
     obs = env.reset()
     max_steps = 100

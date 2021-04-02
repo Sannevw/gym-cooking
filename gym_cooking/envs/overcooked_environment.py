@@ -190,7 +190,8 @@ class OvercookedEnvironment(gym.Env):
                     phase += 1
 
                 # Phase 1: Read in kitchen map.
-                elif phase == 2:
+                elif phase == 1:
+                    print("line:" , line)
                     for x, rep in enumerate(line):
                         # Object, i.e. Tomato, Lettuce, Onion, or Plate.
                         if rep in 'tlop':
@@ -212,7 +213,7 @@ class OvercookedEnvironment(gym.Env):
                             self.world.objects.setdefault('Floor', []).append(f)
                     y += 1
                 # Phase 2: Read in recipe list.
-                elif phase == 1:
+                elif phase == 2:
                     print("line: ", line)
                     self.recipes.append(globals()[line]())
 
