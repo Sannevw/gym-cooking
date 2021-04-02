@@ -6,6 +6,8 @@ class Color:
     FLOOR = (245, 230, 210)  # light gray
     COUNTER = (220, 170, 110)   # tan/gray
     COUNTER_BORDER = (114, 93, 51)  # darker tan
+    WALL = (158, 176, 165)
+    WALL_BORDER = (32, 32, 32) #grey blackish
     DELIVERY = (96, 96, 96)  # grey
 
 KeyToTuple = {
