@@ -16,7 +16,7 @@ Most significant changes w.r.t. original code:
     <img src="images/salad_robot.gif" width=260></img>
 </p>
 
-Please use this bibtex if you want to cite this repository in your publications:
+Please use this bibtex if you want to cite the original repository by Wang et al. in your publications:
 ```
 @article{wang2020too,
   title={Too many cooks: Coordinating multi-agent collaboration through inverse planning},
