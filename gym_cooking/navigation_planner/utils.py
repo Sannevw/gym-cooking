@@ -58,7 +58,7 @@ def get_single_actions(env, agent):
     agent_locs = list(map(lambda a: a.location, env.sim_agents))
 
     # Check valid movement actions
-    for t in [(0, 1), (0, -1), (-1, 0), (1, 0)]:
+    for t in [(0, -1), (-1, 0), (1, 0)]: #(0, 1),
         new_loc = env.world.inbounds(tuple(np.asarray(agent.location) + np.asarray(t)))
         # Check to make sure not at boundary
         if new_loc not in agent_locs:

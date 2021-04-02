@@ -2,28 +2,32 @@
 from recipe_planner.stripsworld import STRIPSWorld
 import recipe_planner.utils as recipe_utils
 from recipe_planner.utils import *
+from delegation_planner.utils import SubtaskAllocDistribution
 
 # Delegation planning
-from delegation_planner.bayesian_delegator import BayesianDelegator
+#from delegation_planner.bayesian_delegator import BayesianDelegator
 
 # Navigation planner
-from navigation_planner.planners.e2e_brtdp import E2E_BRTDP
+from navigation_planner.planners.qlearning import QLEARNING
 import navigation_planner.utils as nav_utils
 
 # Other core modules
 from utils.core import Counter, Cutboard
-from utils.utils import agent_settings
+
 
 import numpy as np
 import copy
+import random
 from termcolor import colored as color
 from collections import namedtuple
 
 AgentRepr = namedtuple("AgentRepr", "name location holding")
+SubtaskAllocation = namedtuple("SubtaskAllocation", "subtask subtask_agent_names")
 
 # Colors for agents.
-COLORS = ['blue', 'magenta', 'yellow', 'green']
-
+COLORS = ['white', 'blue', 'magenta', 'yellow', 'green']
+ACTION_TO_NAME = {(0, -1): 0, (-1, 0): 1, (1, 0): 2} # (0, 0): 4}
+## REMOVED (0, 1)
 
 class RealAgent:
     """Real Agent object that performs task inference and plans."""
@@ -41,21 +45,11 @@ class RealAgent:
         self.incomplete_subtasks = []
         self.signal_reset_delegator = False
         self.is_subtask_complete = lambda w: False
-        self.beta = arglist.beta
+
         self.none_action_prob = 0.5
 
-        self.model_type = agent_settings(arglist, name)
-        if self.model_type == "up":
-            self.priors = 'uniform'
-        else:
-            self.priors = 'spatial'
+        self.planner = QLEARNING()
 
-        # Navigation planner.
-        self.planner = E2E_BRTDP(
-                alpha=arglist.alpha,
-                tau=arglist.tau,
-                cap=arglist.cap,
-                main_cap=arglist.main_cap)
 
     def __str__(self):
         return color(self.name[-1], self.color)
@@ -79,22 +73,57 @@ class RealAgent:
             return 'None'
         return self.holding.full_name
 
-    def select_action(self, obs):
-        """Return best next action for this agent given observations."""
+    def init_action(self, obs):
         sim_agent = list(filter(lambda x: x.name == self.name, obs.sim_agents))[0]
         self.location = sim_agent.location
         self.holding = sim_agent.holding
         self.action = sim_agent.action
-
+        
+    def select_action(self, obs, qtable, epsilon):
+        """Return best next action for this agent given observations."""
         if obs.t == 0:
             self.setup_subtasks(env=obs)
 
-        # Select subtask based on Bayesian Delegation.
-        self.update_subtasks(env=obs)
-        self.new_subtask, self.new_subtask_agent_names = self.delegator.select_subtask(
-                agent_name=self.name)
-        self.plan(copy.copy(obs))
+        # self.update_subtasks(env=obs)
+        # self.new_subtask, self.new_subtask_agent_names = self.select_subtask()
+        # print("subtask: ", self.new_subtask)
+        # print("===Qtable==: ", qtable)
+
+        rand_nr = random.uniform(0,1)
+        if rand_nr > epsilon:
+            self.plan(copy.copy(obs),copy.copy(qtable))
+        else:
+            # Check whether this subtask is done.
+            self.def_subtask_completion(env=obs)
+            self.action = ACTION_TO_NAME[random.choice(obs.world.NAV_ACTIONS)]
+               #np.random.choice(env.world.NAV_ACTIONS)
+        
         return self.action
+
+    def select_subtask(self):
+        max_subtask_alloc = self.add_greedy_subtasks().get_max()
+        if max_subtask_alloc is not None:
+            for t in max_subtask_alloc:
+                if self.name in t.subtask_agent_names:
+                    return t.subtask, t.subtask_agent_names
+        return None, self.name       
+
+    def add_greedy_subtasks(self):
+        """Return the entire distribution of greedy subtask allocations.
+        i.e. subtasks performed only by agent with self.agent_name."""
+        subtask_allocs = []
+
+        subtasks = self.incomplete_subtasks
+        # At least 1 agent must be doing something.
+        if None not in subtasks:
+            subtasks += [None]
+
+        # Assign this agent to all subtasks. No joint subtasks because this function
+        # only considers greedy subtask allocations.
+        for subtask in subtasks:
+            subtask_alloc = [SubtaskAllocation(subtask=subtask, subtask_agent_names=(self.name,))]
+            subtask_allocs.append(subtask_alloc)
+        return SubtaskAllocDistribution(subtask_allocs)
 
     def get_subtasks(self, world):
         """Return different subtask permutations for recipes."""
@@ -107,17 +136,18 @@ class RealAgent:
         # i = 0
         # pg = recipe_utils.make_predicate_graph(self.sw.initial, recipe_paths[i])
         # ag = recipe_utils.make_action_graph(self.sw.initial, recipe_paths[i])
+        #print("All subtasks: ", all_subtasks)
         return all_subtasks
 
     def setup_subtasks(self, env):
         """Initializing subtasks and subtask allocator, Bayesian Delegation."""
         self.incomplete_subtasks = self.get_subtasks(world=env.world)
-        self.delegator = BayesianDelegator(
-                agent_name=self.name,
-                all_agent_names=env.get_agent_names(),
-                model_type=self.model_type,
-                planner=self.planner,
-                none_action_prob=self.none_action_prob)
+        # self.delegator = BayesianDelegator(
+        #         agent_name=self.name,
+        #         all_agent_names=env.get_agent_names(),
+        #         model_type='greedy',
+        #         planner=self.planner,
+        #         none_action_prob=self.none_action_prob)
 
     def reset_subtasks(self):
         """Reset subtasks---relevant for Bayesian Delegation."""
@@ -126,48 +156,46 @@ class RealAgent:
         self.subtask_complete = False
 
     def refresh_subtasks(self, world):
-        """Refresh subtasks---relevant for Bayesian Delegation."""
         # Check whether subtask is complete.
         self.subtask_complete = False
-        if self.subtask is None or len(self.subtask_agent_names) == 0:
-            print("{} has no subtask".format(color(self.name, self.color)))
-            return
+        #if self.subtask is None or len(self.subtask_agent_names) == 0:
+            #print("{} has no subtask".format(color(self.name, self.color)))
+            #return
         self.subtask_complete = self.is_subtask_complete(world)
-        print("{} done with {} according to planner: {}\nplanner has subtask {} with subtask object {}".format(
-            color(self.name, self.color),
-            self.subtask, self.is_subtask_complete(world),
-            self.planner.subtask, self.planner.goal_obj))
+
+        #print("{} done with {} according to planner: {}\n".format(color(self.name, self.color), self.subtask, self.is_subtask_complete(world)))
 
         # Refresh for incomplete subtasks.
         if self.subtask_complete:
             if self.subtask in self.incomplete_subtasks:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
-        print('{} incomplete subtasks:'.format(
-            color(self.name, self.color)),
-            ', '.join(str(t) for t in self.incomplete_subtasks))
+        # print('{} incomplete subtasks:'.format(
+        #     color(self.name, self.color)),
+        #     ', '.join(str(t) for t in self.incomplete_subtasks))
 
-    def update_subtasks(self, env):
-        """Update incomplete subtasks---relevant for Bayesian Delegation."""
-        if ((self.subtask is not None and self.subtask not in self.incomplete_subtasks)
-                or (self.delegator.should_reset_priors(obs=copy.copy(env),
-                            incomplete_subtasks=self.incomplete_subtasks))):
-            self.reset_subtasks()
-            self.delegator.set_priors(
-                    obs=copy.copy(env),
-                    incomplete_subtasks=self.incomplete_subtasks,
-                    priors_type=self.priors)
-        else:
-            if self.subtask is None:
-                self.delegator.set_priors(
-                    obs=copy.copy(env),
-                    incomplete_subtasks=self.incomplete_subtasks,
-                    priors_type=self.priors)
-            else:
-                self.delegator.bayes_update(
-                        obs_tm1=copy.copy(env.obs_tm1),
-                        actions_tm1=env.agent_actions,
-                        beta=self.beta)
+    # def update_subtasks(self, env):
+    #     """Update incomplete subtasks---relevant for Bayesian Delegation."""
+    #     # if ((self.subtask is not None and self.subtask not in self.incomplete_subtasks):
+    #     #         or (self.delegator.should_reset_priors(obs=copy.copy(env),
+    #     #                     incomplete_subtasks=self.incomplete_subtasks))):
+    #     #     self.reset_subtasks()
+    #     #     self.delegator.set_priors(
+    #     #             obs=copy.copy(env),
+    #     #             incomplete_subtasks=self.incomplete_subtasks,
+    #     #             priors_type=self.priors)
+    #     # else:
+    #     #     if self.subtask is None:
+    #     #         self.delegator.set_priors(
+    #     #             obs=copy.copy(env),
+    #     #             incomplete_subtasks=self.incomplete_subtasks,
+    #     #             priors_type=self.priors)
+    #     #     else:
+    #     #         self.delegator.bayes_update(
+    #     #                 obs_tm1=copy.copy(env.obs_tm1),
+    #     #                 actions_tm1=env.agent_actions,
+    #     #                 beta=self.beta)
+    #     self.reset_subtasks()
 
     def all_done(self):
         """Return whether this agent is all done.
@@ -180,49 +208,34 @@ class RealAgent:
         """Return location if agent takes its action---relevant for navigation planner."""
         return tuple(np.asarray(self.location) + np.asarray(self.action))
 
-    def plan(self, env, initializing_priors=False):
+    def plan(self, env, qtable, initializing_priors=False):
         """Plan next action---relevant for navigation planner."""
         print('right before planning, {} had old subtask {}, new subtask {}, subtask complete {}'.format(self.name, self.subtask, self.new_subtask, self.subtask_complete))
 
         # Check whether this subtask is done.
-        if self.new_subtask is not None:
-            self.def_subtask_completion(env=env)
+        self.def_subtask_completion(env=env)
 
-        # If subtask is None, then do nothing.
-        if (self.new_subtask is None) or (not self.new_subtask_agent_names):
-            actions = nav_utils.get_single_actions(env=env, agent=self)
-            probs = []
-            for a in actions:
-                if a == (0, 0):
-                    probs.append(self.none_action_prob)
-                else:
-                    probs.append((1.0-self.none_action_prob)/(len(actions)-1))
-            self.action = actions[np.random.choice(len(actions), p=probs)]
+        # If subtask is None, then do nothing. ????
+        # if (self.new_subtask is None) or (not self.new_subtask_agent_names):
+        #     actions = nav_utils.get_single_actions(env=env, agent=self)
+        #     probs = []
+        #     for a in actions:
+        #         if a == (0, 0):
+        #             probs.append(self.none_action_prob)
+        #         else:
+        #             probs.append((1.0-self.none_action_prob)/(len(actions)-1))
+        #     self.action = actions[np.random.choice(len(actions), p=probs)]
         # Otherwise, plan accordingly.
-        else:
-            if self.model_type == 'greedy' or initializing_priors:
-                other_agent_planners = {}
-            else:
-                # Determine other agent planners for level 1 planning.
-                # Other agent planners are based on your planner---agents never
-                # share planners.
-                backup_subtask = self.new_subtask if self.new_subtask is not None else self.subtask
-                other_agent_planners = self.delegator.get_other_agent_planners(
-                        obs=copy.copy(env), backup_subtask=backup_subtask)
+        # else:
+        #other_agent_planners = {}
+        
+        print("[ {} Planning ] Task: {}, Task Agents: {}".format(
+            self.name, self.new_subtask, self.new_subtask_agent_names))
 
-            print("[ {} Planning ] Task: {}, Task Agents: {}".format(
-                self.name, self.new_subtask, self.new_subtask_agent_names))
-
-            action = self.planner.get_next_action(
-                    env=env, subtask=self.new_subtask,
-                    subtask_agent_names=self.new_subtask_agent_names,
-                    other_agent_planners=other_agent_planners)
-
-            # If joint subtask, pick your part of the simulated joint plan.
-            if self.name not in self.new_subtask_agent_names and self.planner.is_joint:
-                self.action = action[0]
-            else:
-                self.action = action[self.new_subtask_agent_names.index(self.name)] if self.planner.is_joint else action
+        # get argmax, biggest q value for this state.
+        self.action = self.planner.get_next_action(
+                env=env, qtable=qtable, subtask=self.new_subtask,
+                subtask_agent_names=self.new_subtask_agent_names)
 
         # Update subtask.
         self.subtask = self.new_subtask
@@ -230,7 +243,7 @@ class RealAgent:
         self.new_subtask = None
         self.new_subtask_agent_names = []
 
-        print('{} proposed action: {}\n'.format(self.name, self.action))
+        # print('{} proposed action: {}\n'.format(self.name, self.action))
 
     def def_subtask_completion(self, env):
         # Determine desired objects.
@@ -239,21 +252,28 @@ class RealAgent:
 
         # Define termination conditions for agent subtask.
         # For Deliver subtask, desired object should be at a Deliver location.
-        if isinstance(self.new_subtask, Deliver):
-            self.cur_obj_count = len(list(
-                filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)),
-                env.world.get_object_locs(obj=self.goal_obj, is_held=False))))
-            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-            self.is_subtask_complete = lambda w: self.has_more_obj(
-                    len(list(filter(lambda o: o in
-                set(env.world.get_all_object_locs(obj=self.subtask_action_object)),
-                w.get_object_locs(obj=self.goal_obj, is_held=False)))))
-        # Otherwise, for other subtasks, check based on # of objects.
-        else:
-            # Current count of desired objects.
-            self.cur_obj_count = len(env.world.get_all_object_locs(obj=self.goal_obj))
-            # Goal state is reached when the number of desired objects has increased.
-            self.is_subtask_complete = lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count
+        for subtask in env.run_recipes():
+            #print("SUBTASK IN COMPLETION CHECK: ", subtask)
+            if self.start_obj and self.goal_obj:
+                if isinstance(subtask, Deliver):
+                    self.cur_obj_count = len(list(
+                        filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)),
+                        env.world.get_object_locs(obj=self.goal_obj, is_held=False))))
+                    self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+                    self.is_subtask_complete = lambda w: self.has_more_obj(
+                            len(list(filter(lambda o: o in
+                        set(env.world.get_all_object_locs(obj=self.subtask_action_object)),
+                        w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+                # Otherwise, for other subtasks, check based on # of objects.
+                else:
+                    # Current count of desired objects.
+                    self.cur_obj_count = len(env.world.get_all_object_locs(obj=self.goal_obj))
+                    # Goal state is reached when the number of desired objects has increased.
+                    print(w.get_all_object_locs(obj=self.goal_obj))
+                    print(self.cur_obj_count)
+                    print(lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count)
+                    quit()
+                    self.is_subtask_complete = lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count
 
 
 class SimAgent:
@@ -267,7 +287,7 @@ class SimAgent:
         self.action = (0, 0)
         self.has_delivered = False
 
-    def __str__(self):
+    def __str__(self): 
         return color(self.name[-1], self.color)
 
     def __copy__(self):
@@ -287,11 +307,18 @@ class SimAgent:
         return self.holding.full_name
 
     def print_status(self):
-        print("{} currently at {}, action {}, holding {}".format(
-                color(self.name, self.color),
+        if self.color == 'robot':
+            print("{} currently at {}, action {}, holding {}".format(
+                color('robot', 'grey'),
                 self.location,
                 self.action,
                 self.get_holding()))
+        else:   
+            print("{} currently at {}, action {}, holding {}".format(
+                    color(self.name, self.color),
+                    self.location,
+                    self.action,
+                    self.get_holding()))
 
     def acquire(self, obj):
         if self.holding is None:

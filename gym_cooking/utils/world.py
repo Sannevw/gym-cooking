@@ -8,12 +8,16 @@ from functools import lru_cache
 
 import recipe_planner.utils as recipe
 from navigation_planner.utils import manhattan_dist
-from utils.core import Object, GridSquare, Counter
+from utils.core import Object, GridSquare, Counter, Wall
 
 
 class World:
     """World class that hold all of the non-agent objects in the environment."""
-    NAV_ACTIONS = [(0, 1), (0, -1), (-1, 0), (1, 0)]
+    # up, down, left, right
+    NAV_ACTIONS = [(0, -1), (-1, 0), (1, 0)]#, (0, 0)]
+
+    #ACTION_TO_NAME = {(0, 1): 0, (0, -1): 1, (-1, 0): 2, (1, 0): 3} # (0, 0): 4}
+    ACTION_TO_NAME = {(0, -1): 0, (-1, 0): 1, (1, 0): 2} # (0, 0): 4}
 
     def __init__(self, arglist):
         self.rep = [] # [row0, row1, ..., rown]
@@ -34,6 +38,15 @@ class World:
         new.reachability_graph = self.reachability_graph
         new.distances = self.distances
         return new
+
+    def get_action_name(self, val):
+        for key, value in self.ACTION_TO_NAME.items():
+            print("key: ", key)
+            print("value:", value)
+            print("val: ", val)
+            if val == key:
+                return value
+        return "key doesn't exist"
 
     def update_display(self):
         # Reset the current display (self.rep).
@@ -237,7 +250,7 @@ class World:
         objs = list()
 
         for key in sorted(self.objects.keys()):
-            if key != "Counter" and key != "Floor" and "Supply" not in key and key != "Delivery" and key != "Cutboard":
+            if key != "Wall" and key != "Counter" and key != "Floor" and "Supply" not in key and key != "Delivery" and key != "Cutboard":
                 objs.append(tuple(list(map(lambda o: o.get_repr(), self.objects[key]))))
 
         # Must return a tuple because this is going to get hashed.

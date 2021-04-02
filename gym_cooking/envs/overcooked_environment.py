@@ -4,7 +4,7 @@ import recipe_planner.utils as recipe
 from recipe_planner.recipe import *
 
 # Delegation planning
-from delegation_planner.bayesian_delegator import BayesianDelegator
+#from delegation_planner.bayesian_delegator import BayesianDelegator
 
 # Navigation planning
 import navigation_planner.utils as nav_utils
@@ -27,9 +27,11 @@ import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 
+NAV_ACTIONS = [(0, -1), (-1, 0), (1, 0)]
 
 CollisionRepr = namedtuple("CollisionRepr", "time agent_names agent_locations")
 
+OBJ_TO_IDX = {'FreshTomato': 1, 'ChoppedTomato': 1, 'Plate': 2, 'chopped': 3}
 
 class OvercookedEnvironment(gym.Env):
     """Environment object for Overcooked."""
@@ -37,6 +39,7 @@ class OvercookedEnvironment(gym.Env):
     def __init__(self, arglist):
         self.arglist = arglist
         self.t = 0
+        self.reward = 0
         self.set_filename()
 
         # For visualizing episode.
@@ -46,6 +49,103 @@ class OvercookedEnvironment(gym.Env):
         self.collisions = []
         self.termination_info = ""
         self.successful = False
+
+
+    def encode(self):
+        #110001 - 49 in binary
+        # add the other three thingies
+        self.world_rep = self.world.get_repr()
+        self.agent_rep = [agent.get_repr() for agent in self.sim_agents]
+        #state_encoded = self.get_onehot()
+        state_encoded = self.get_binary()
+        return state_encoded
+        
+        # print("World rep: ", self.world_rep)
+        # print("agent rep: ", self.agent_rep)
+
+    def get_binary(self):
+        for ag in self.agent_rep:
+            x, y = ag.location[0], ag.location[1]
+            if 0 >= y < self.world.width:
+                state_bin = self.decimalToBinary(x, True)
+            elif y+1*self.world.width >= y < y+1*self.world.width+self.world.width:  
+                state_bin = self.decimalToBinary(x+self.world.width, True)
+        
+        ## UNCOMMENT BELOW
+        # state_bin = ''
+        for obj in self.world_rep:
+            try:
+                obj = obj[0]
+                x, y = obj.location[0], obj.location[1]
+                if 0 >= y < self.world.width:
+                    state_bin += self.decimalToBinary(x, True)
+                elif y+1*self.world.width >= y < y+1*self.world.width+self.world.width:  
+                    state_bin += self.decimalToBinary(x+self.world.width, True)                 
+            except:
+                pass
+        count = 0
+
+        for obj in self.world_rep:
+            try:
+                obj = obj[0]
+                if obj.name != 'Agent-Counter':
+                    if obj.is_held and 'Tomato' in obj.name:
+                        count+=4
+                    if obj.is_held and 'Plate' in obj.name:
+                        count+=2
+                    if 'Chopped' in obj.name:
+                        count+=1
+            except:
+                pass
+        binary_add = self.decimalToBinary(count, True)
+        #print("state binary: ", state_bin)
+        #print("binary add: ", binary_add)
+
+        ### MINIMIZING STATES
+        state_bin += binary_add
+                
+        # bin_b = self.decimalToBinary(b)
+        # state_bin = state_bin + str(bin_b)
+        #print("Statebin tring:" , state_bin )
+        state_bin = bin(int(state_bin, 2))
+
+        return state_bin
+            
+
+    def decimalToBinary(self, n, s):
+        if s:
+            return str(format(n, '03b'))
+        else:
+            return format(n, '03b') #bin(n).replace("03b", "")
+
+    def get_onehot(self):
+        # print("World rep: ", self.world_rep)
+        # print("len world rep: ", len(self.world_rep))
+        onehots = []
+        for ag in self.agent_rep:
+            x, y = ag.location[0], ag.location[1]
+            onehot = np.zeros(self.world.width+self.world.height+3)
+            onehot[x] = 1
+            onehot[y+self.world.width] = 1
+        for obj in self.world_rep:
+            obj = obj[0]
+            # add encoding for 'is held' tomato and 'is held' plate
+
+            if obj.is_held:
+                print("onehot before is held: ", onehot)
+                onehot[OBJ_TO_IDX[obj.name]+self.world.width+self.world.height] = 1
+                print("one hot after is held: ", onehot)
+            # add the onehot encoding for 'isChopped'
+            if 'Chopped' in obj.name:
+                print("onehot before chopping: ", onehot)
+                onehot[OBJ_TO_IDX['chopped']+self.world.width+self.world.height] = 1
+                print("onehot after chopping: ", onehot)
+
+            onehots.append(onehot)
+        return onehot
+
+
+
 
     def get_repr(self):
         return self.world.get_repr() + tuple([agent.get_repr() for agent in self.sim_agents])
@@ -77,16 +177,6 @@ class OvercookedEnvironment(gym.Env):
     def set_filename(self):
         self.filename = "{}_agents{}_seed{}".format(self.arglist.level,\
             self.arglist.num_agents, self.arglist.seed)
-        model = ""
-        if self.arglist.model1 is not None:
-            model += "_model1-{}".format(self.arglist.model1)
-        if self.arglist.model2 is not None:
-            model += "_model2-{}".format(self.arglist.model2)
-        if self.arglist.model3 is not None:
-            model += "_model3-{}".format(self.arglist.model3)
-        if self.arglist.model4 is not None:
-            model += "_model4-{}".format(self.arglist.model4)
-        self.filename += model
 
     def load_level(self, level, num_agents):
         x = 0
@@ -100,18 +190,19 @@ class OvercookedEnvironment(gym.Env):
                     phase += 1
 
                 # Phase 1: Read in kitchen map.
-                elif phase == 1:
+                elif phase == 2:
                     for x, rep in enumerate(line):
                         # Object, i.e. Tomato, Lettuce, Onion, or Plate.
                         if rep in 'tlop':
                             counter = Counter(location=(x, y))
                             obj = Object(
                                     location=(x, y),
-                                    contents=RepToClass[rep]())
+                                    contents=RepToClass[rep]()
+                                    )
                             counter.acquire(obj=obj)
                             self.world.insert(obj=counter)
                             self.world.insert(obj=obj)
-                        # GridSquare, i.e. Floor, Counter, Cutboard, Delivery.
+                        # GridSquare, i.e. Floor, Counter, Cutboard, Delivery. Wall
                         elif rep in RepToClass:
                             newobj = RepToClass[rep]((x, y))
                             self.world.objects.setdefault(newobj.name, []).append(newobj)
@@ -121,7 +212,8 @@ class OvercookedEnvironment(gym.Env):
                             self.world.objects.setdefault('Floor', []).append(f)
                     y += 1
                 # Phase 2: Read in recipe list.
-                elif phase == 2:
+                elif phase == 1:
+                    print("line: ", line)
                     self.recipes.append(globals()[line]())
 
                 # Phase 3: Read in agent locations (up to num_agents).
@@ -146,6 +238,8 @@ class OvercookedEnvironment(gym.Env):
         self.sim_agents = []
         self.agent_actions = {}
         self.t = 0
+        episode = 0
+        self.reward = 0
 
         # For visualizing episode.
         self.rep = []
@@ -170,19 +264,22 @@ class OvercookedEnvironment(gym.Env):
                     filename=self.filename,
                     world=self.world,
                     sim_agents=self.sim_agents,
-                    record=self.arglist.record)
+                    record=self.arglist.record,
+                    train=self.arglist.train)
             self.game.on_init()
             if self.arglist.record:
-                self.game.save_image_obs(self.t)
+                self.game.save_image_obs(self.t, episode)
 
         return copy.copy(self)
 
     def close(self):
         return
 
-    def step(self, action_dict):
+    def step(self, action_dict, episode):
         # Track internal environment info.
         self.t += 1
+        
+
         print("===============================")
         print("[environment.step] @ TIMESTEP {}".format(self.t))
         print("===============================")
@@ -191,18 +288,20 @@ class OvercookedEnvironment(gym.Env):
         for sim_agent in self.sim_agents:
             sim_agent.action = action_dict[sim_agent.name]
 
+
         # Check collisions.
-        self.check_collisions()
-        self.obs_tm1 = copy.copy(self)
+        #self.check_collisions()
+        #self.obs_tm1 = copy.copy(self)
 
         # Execute.
         self.execute_navigation()
 
         # Visualize.
         self.display()
+        
         self.print_agents()
         if self.arglist.record:
-            self.game.save_image_obs(self.t)
+            self.game.save_image_obs(self.t, episode)
 
         # Get a plan-representation observation.
         new_obs = copy.copy(self)
@@ -210,18 +309,20 @@ class OvercookedEnvironment(gym.Env):
         image_obs = self.game.get_image_obs()
 
         done = self.done()
-        reward = self.reward()
+        #self.reward_func()
         info = {"t": self.t, "obs": new_obs,
                 "image_obs": image_obs,
                 "done": done, "termination_info": self.termination_info}
-        return new_obs, reward, done, info
+        return new_obs, self.reward, done, info
 
 
     def done(self):
+        # print("===check if done====")
         # Done if the episode maxes out
         if self.t >= self.arglist.max_num_timesteps and self.arglist.max_num_timesteps:
             self.termination_info = "Terminating because passed {} timesteps".format(
                     self.arglist.max_num_timesteps)
+            # self.reward = 0
             self.successful = False
             return True
 
@@ -230,6 +331,8 @@ class OvercookedEnvironment(gym.Env):
         # Done if subtask is completed.
         for subtask in self.all_subtasks:
             # Double check all goal_objs are at Delivery.
+            # print("Subtask: ", subtask)
+            
             if isinstance(subtask, recipe.Deliver):
                 _, goal_obj = nav_utils.get_subtask_obj(subtask)
 
@@ -239,13 +342,13 @@ class OvercookedEnvironment(gym.Env):
                     self.termination_info = ""
                     self.successful = False
                     return False
-
         self.termination_info = "Terminating because all deliveries were completed"
         self.successful = True
         return True
 
-    def reward(self):
-        return 1 if self.successful else 0
+    def reward_func(self):
+        if self.successful:
+            self.reward = 20
 
     def print_agents(self):
         for sim_agent in self.sim_agents:
@@ -271,12 +374,11 @@ class OvercookedEnvironment(gym.Env):
         # [path for recipe 1, path for recipe 2, ...] where each path is a list of actions
         subtasks = self.sw.get_subtasks(max_path_length=self.arglist.max_num_subtasks)
         all_subtasks = [subtask for path in subtasks for subtask in path]
-        print('Subtasks:', all_subtasks, '\n')
+        
         return all_subtasks
 
     def get_AB_locs_given_objs(self, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
         """Returns list of locations relevant for subtask's Merge operator.
-
         See Merge operator formalism in our paper, under Fig. 11:
         https://arxiv.org/pdf/2003.11778.pdf"""
 
@@ -358,7 +460,6 @@ class OvercookedEnvironment(gym.Env):
 
     def is_collision(self, agent1_loc, agent2_loc, agent1_action, agent2_action):
         """Returns whether agents are colliding.
-
         Collisions happens if agent collide amongst themselves or with world objects."""
         # Tracks whether agents can execute their action.
         execute = [True, True]
@@ -393,7 +494,6 @@ class OvercookedEnvironment(gym.Env):
 
     def check_collisions(self):
         """Checks for collisions and corrects agents' executable actions.
-
         Collisions can either happen amongst agents or between agents and world objects."""
         execute = [True for _ in self.sim_agents]
 
@@ -413,24 +513,30 @@ class OvercookedEnvironment(gym.Env):
                 execute[j] = False
 
             # Track collisions.
-            if not all(exec_):
-                collision = CollisionRepr(
-                        time=self.t,
-                        agent_names=[agent_i.name, agent_j.name],
-                        agent_locations=[agent_i.location, agent_j.location])
-                self.collisions.append(collision)
+            # if not all(exec_):
+            #     collision = CollisionRepr(
+            #             time=self.t,
+            #             agent_names=[agent_i.name, agent_j.name],
+            #             agent_locations=[agent_i.location, agent_j.location])
+            #     self.collisions.append(collision)
 
-        print('\nexecute array is:', execute)
+        #print('\nexecute array is:', execute)
 
         # Update agents' actions if collision was detected.
-        for i, agent in enumerate(self.sim_agents):
-            if not execute[i]:
-                agent.action = (0, 0)
-            print("{} has action {}".format(color(agent.name, agent.color), agent.action))
+        # for i, agent in enumerate(self.sim_agents):
+        #     if not execute[i]:
+        #         agent.action = (0, 0)
+        #     print("{} has action {}".format(color(agent.name, agent.color), agent.action))
 
     def execute_navigation(self):
+        #print("execute navigation")
         for agent in self.sim_agents:
-            interact(agent=agent, world=self.world)
+            #print("agent.action: ", agent.action)
+            agent.action = NAV_ACTIONS[agent.action]
+            reward = interact(agent=agent, world=self.world, recipe=self.recipes)
+            #print('----REWARD---: ', reward)
+            if reward is not None:
+                self.reward = reward
             self.agent_actions[agent.name] = agent.action
 
 
@@ -469,4 +575,3 @@ class OvercookedEnvironment(gym.Env):
 
         # Save all distances under world as well.
         self.world.distances = self.distances
-

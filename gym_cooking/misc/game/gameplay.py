@@ -15,10 +15,11 @@ from datetime import datetime
 
 
 class GamePlay(Game):
-    def __init__(self, filename, world, sim_agents):
+    def __init__(self, filename, world, sim_agents, recipe):
         Game.__init__(self, world, sim_agents, play=True)
         self.filename = filename
         self.save_dir = 'misc/game/screenshots'
+        self.recipe = recipe
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
 
@@ -52,10 +53,11 @@ class GamePlay(Game):
 
             # Control current agent
             x, y = self.current_agent.location
+            
             if event.key in KeyToTuple.keys():
                 action = KeyToTuple[event.key]
                 self.current_agent.action = action
-                interact(self.current_agent, self.world)
+                interact(self.current_agent, self.world, recipe=self.recipe)
 
     def on_execute(self):
         if self.on_init() == False:

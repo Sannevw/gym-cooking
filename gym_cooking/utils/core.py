@@ -18,6 +18,7 @@ GridSquareRepr = namedtuple("GridSquareRepr", "name location holding")
 class Rep:
     FLOOR = ' '
     COUNTER = '-'
+    WALL = '='
     CUTBOARD = '/'
     DELIVERY = '*'
     TOMATO = 't'
@@ -71,6 +72,15 @@ class Counter(GridSquare):
     def __init__(self, location):
         GridSquare.__init__(self,"Counter", location)
         self.rep = Rep.COUNTER
+    def __eq__(self, other):
+        return GridSquare.__eq__(self, other)
+    def __hash__(self):
+        return GridSquare.__hash__(self)
+
+class Wall(GridSquare):
+    def __init__(self, location):
+        GridSquare.__init__(self,"Wall", location)
+        self.rep = Rep.WALL
     def __eq__(self, other):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
@@ -179,6 +189,7 @@ class Object:
         self.contents[0].update_state()
         assert not (self.needs_chopped())
         self.update_names()
+        return 1
 
     def merge(self, obj):
         if isinstance(obj, Object):
@@ -349,6 +360,7 @@ class Plate:
 RepToClass = {
     Rep.FLOOR: globals()['Floor'],
     Rep.COUNTER: globals()['Counter'],
+    Rep.WALL: globals()['Wall'],
     Rep.CUTBOARD: globals()['Cutboard'],
     Rep.DELIVERY: globals()['Delivery'],
     Rep.TOMATO: globals()['Tomato'],

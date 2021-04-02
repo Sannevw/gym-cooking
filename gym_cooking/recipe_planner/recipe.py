@@ -28,6 +28,7 @@ class Recipe:
         self.contents_names = [c.name for c in self.contents]   # list of strings
         self.full_name = '-'.join(sorted(self.contents_names))   # string
         self.full_plate_name = '-'.join(sorted(self.contents_names + ['Plate']))   # string
+        print("self: ", self.full_plate_name)
         self.goal = recipe.Delivered(self.full_plate_name)
         self.actions.add(recipe.Deliver(self.full_plate_name))
 
@@ -95,5 +96,3 @@ class OnionSalad(Recipe):
         self.add_ingredient(Onion(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
-
-
