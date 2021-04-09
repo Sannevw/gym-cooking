@@ -14,7 +14,7 @@ from utils.core import Object, GridSquare, Counter, Wall
 class World:
     """World class that hold all of the non-agent objects in the environment."""
     # up, down, left, right
-    NAV_ACTIONS = [(0, -1), (-1, 0), (1, 0)]#, (0, 0)]
+    NAV_ACTIONS = [(0, 1), (0, -1), (-1, 0), (1, 0)]#, (0, 0)]
 
     #ACTION_TO_NAME = {(0, 1): 0, (0, -1): 1, (-1, 0): 2, (1, 0): 3} # (0, 0): 4}
     ACTION_TO_NAME = {(0, -1): 0, (-1, 0): 1, (1, 0): 2} # (0, 0): 4}

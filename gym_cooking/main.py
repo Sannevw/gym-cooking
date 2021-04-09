@@ -15,7 +15,7 @@ from collections import namedtuple
 import gym
 
 #ACTION_TO_NAME = {(0, 1): 0, (0, -1): 1, (-1, 0): 2, (1, 0): 3} # (0, 0): 4}
-ACTION_TO_NAME = {(0, -1): 0,  (-1, 0): 1, (1, 0): 2} # (0, 0): 4}
+ACTION_TO_NAME = {(0, 1): 0, (0, -1): 1, (-1, 0): 2, (1, 0): 3} # (0, 0): 4}
 
 def parse_arguments():
     parser = argparse.ArgumentParser("Overcooked 2 argument parser")
@@ -61,7 +61,7 @@ def initialize_agents(arglist):
 
             # phase 2: read in recipe list
             elif phase == 2:
-                recipes.appendphase ==(globals()[line]())
+                recipes.append(globals()[line]())
 
             # phase 3: read in agent locations (up to num_agents)
             elif phase == 3:
@@ -132,7 +132,7 @@ def main_loop(arglist):
             # Uncomment to print out the environment.
             #env.display()
             
-            while not env.done():
+            while not env.done:
                 action_dict = {}
 
 
@@ -151,10 +151,7 @@ def main_loop(arglist):
                     
 
                     qtable[state, action] = qtable[state, action] + arglist.lr * (reward + arglist.gamma * np.max(qtable[new_state, :]) - qtable[state, action])
-
-                    agent.refresh_subtasks(world=env.world)
                 qdiff = abs(qtable[state,action] - old_qtable[state,action])
-                #print("qtable: ", qtable[idx])
                 obs = new_obs
                 print("reward: ", reward)
                 

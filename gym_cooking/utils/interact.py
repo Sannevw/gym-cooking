@@ -9,6 +9,7 @@ def interact(agent, world, recipe):
     """
 
     reward = -0.02 * (world.width * world.height * 0.1)
+    done = False
 
     recipe_name = [x.name for x in recipe][0]
     plate_name = [x.full_plate_name for x in recipe][0]
@@ -35,11 +36,13 @@ def interact(agent, world, recipe):
                 agent.release()
                 print('\nDelivered {}!'.format(obj.full_name))
                 reward = 2 * (world.width * world.height * 0.4)
+                done = True
 
             elif 'Salad' not in recipe_name and obj.is_deliverable():
                 gs.acquire(obj)
                 agent.release()
                 print('\nDelivered {}!'.format(obj.full_name))
+                done = True
                 reward = 2 * (world.width * world.height * 0.4)
 
         # if occupied gridsquare in front --> try merging
@@ -99,4 +102,4 @@ def interact(agent, world, recipe):
             pass
 
         
-    return reward
+    return reward, done

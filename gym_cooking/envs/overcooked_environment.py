@@ -3,9 +3,6 @@ from recipe_planner.stripsworld import STRIPSWorld
 import recipe_planner.utils as recipe
 from recipe_planner.recipe import *
 
-# Delegation planning
-#from delegation_planner.bayesian_delegator import BayesianDelegator
-
 # Navigation planning
 import navigation_planner.utils as nav_utils
 
@@ -27,7 +24,6 @@ import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 
-NAV_ACTIONS = [(0, -1), (-1, 0), (1, 0)]
 
 CollisionRepr = namedtuple("CollisionRepr", "time agent_names agent_locations")
 
@@ -191,7 +187,6 @@ class OvercookedEnvironment(gym.Env):
 
                 # Phase 1: Read in kitchen map.
                 elif phase == 1:
-                    print("line:" , line)
                     for x, rep in enumerate(line):
                         # Object, i.e. Tomato, Lettuce, Onion, or Plate.
                         if rep in 'tlop':
@@ -214,7 +209,6 @@ class OvercookedEnvironment(gym.Env):
                     y += 1
                 # Phase 2: Read in recipe list.
                 elif phase == 2:
-                    print("line: ", line)
                     self.recipes.append(globals()[line]())
 
                 # Phase 3: Read in agent locations (up to num_agents).
@@ -241,6 +235,8 @@ class OvercookedEnvironment(gym.Env):
         self.t = 0
         episode = 0
         self.reward = 0
+        self.done = False
+
 
         # For visualizing episode.
         self.rep = []
@@ -289,11 +285,6 @@ class OvercookedEnvironment(gym.Env):
         for sim_agent in self.sim_agents:
             sim_agent.action = action_dict[sim_agent.name]
 
-
-        # Check collisions.
-        #self.check_collisions()
-        #self.obs_tm1 = copy.copy(self)
-
         # Execute.
         self.execute_navigation()
 
@@ -309,21 +300,21 @@ class OvercookedEnvironment(gym.Env):
         # Get an image observation
         image_obs = self.game.get_image_obs()
 
-        done = self.done()
+        if not self.done:
+            self.done = self.done_func()
         #self.reward_func()
         info = {"t": self.t, "obs": new_obs,
                 "image_obs": image_obs,
-                "done": done, "termination_info": self.termination_info}
-        return new_obs, self.reward, done, info
+                "done": self.done, "termination_info": self.termination_info}
+        return new_obs, self.reward, self.done, info
 
 
-    def done(self):
+    def done_func(self):
         # print("===check if done====")
         # Done if the episode maxes out
         if self.t >= self.arglist.max_num_timesteps and self.arglist.max_num_timesteps:
             self.termination_info = "Terminating because passed {} timesteps".format(
                     self.arglist.max_num_timesteps)
-            # self.reward = 0
             self.successful = False
             return True
 
@@ -513,28 +504,13 @@ class OvercookedEnvironment(gym.Env):
             if not exec_[1]:
                 execute[j] = False
 
-            # Track collisions.
-            # if not all(exec_):
-            #     collision = CollisionRepr(
-            #             time=self.t,
-            #             agent_names=[agent_i.name, agent_j.name],
-            #             agent_locations=[agent_i.location, agent_j.location])
-            #     self.collisions.append(collision)
-
-        #print('\nexecute array is:', execute)
-
-        # Update agents' actions if collision was detected.
-        # for i, agent in enumerate(self.sim_agents):
-        #     if not execute[i]:
-        #         agent.action = (0, 0)
-        #     print("{} has action {}".format(color(agent.name, agent.color), agent.action))
 
     def execute_navigation(self):
         #print("execute navigation")
         for agent in self.sim_agents:
             #print("agent.action: ", agent.action)
-            agent.action = NAV_ACTIONS[agent.action]
-            reward = interact(agent=agent, world=self.world, recipe=self.recipes)
+            agent.action = World.NAV_ACTIONS[agent.action]
+            reward, self.done = interact(agent=agent, world=self.world, recipe=self.recipes)
             #print('----REWARD---: ', reward)
             if reward is not None:
                 self.reward = reward
