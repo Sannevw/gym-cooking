@@ -9,7 +9,6 @@ Most significant changes w.r.t. original code:
 - Includes 'walls', places where the agent cannot place objects to lower complexity.
 - Salad recipe has to be served as: lettuce + tomato on a plate. We do not serve 'tomato' or 'lettuce' separately.
 - Implemented Simple Q-learning
-- Removed action (0, 1) (move down) - as we used grids in which we never want to 'move down'. To simplify. However, this can be re-added easily.
 - Added a 'robot agent' graphic called `agent-white.png`
 
 <p align="center">
@@ -40,6 +39,8 @@ cd gym-cooking
 pip3 install -e .
 ```
 
+I have created a [Python 3 virtual environment](https://docs.python.org/3/library/venv.html).
+
 All experiments have been run with `python3`! 
 
 ## Usage 
@@ -58,12 +59,12 @@ For the code below, make sure that you are in **gym-cooking/gym_cooking/**. This
 
 The basic structure of our commands is the following:
 
-`python main.py --num-agents 1 --level <level name>`
+`python main.py --num-agents 1 --level <level name> --record`
 
-where `<number>` is always 1 but argument kept for potential upscaling, `level name` are the names of levels available under the directory `cooking/utils/levels`, omitting the `.txt`.
+where `<number>` is always 1 but argument kept for potential upscaling, `level name` are the names of levels available under the directory `cooking/utils/levels`, omitting the `.txt`. The `--record` argument will save the observation at each time step as an image in `misc/game/record`. We store for each 50th episode once we have reached 100 episodes. This can be changed in `misc/game/GameImage.py` in the `save_image_obs` function.
 
 For example, running the salad recipe on a 3x6 grid looks like:
-`python main.py --num-agents=1 --level salad_3x6grid`
+`python main.py --num-agents=1 --level salad_3x6grid --record`
 
 Although our work uses object-oriented representations for observations/states, the `OvercookedEnvironment.step` function returns *image observations* in the `info` object. They can be retrieved with `info['image_obs']`.  
 
@@ -75,11 +76,6 @@ where `<level>` is the level you trained your agent in e.g., `salad_3x6grid` and
 You will find a successful run (if the agent is trained properly to succeed at the recipe) here:
 `/misc/game/record/trained_agent/<img_save_name>`
 where `<img_save_name>` is the level name + how many agents + the seed: e.g., `simple_tomato_4x6grid_agents1_seed1`
-
-### Additional commands
-
-The above commands can also be appended with the following flags:
-* `--record` will save the observation at each time step as an image in `misc/game/record`.
 
 ### Manual control
 
