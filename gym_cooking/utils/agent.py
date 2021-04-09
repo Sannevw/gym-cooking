@@ -2,7 +2,6 @@
 from recipe_planner.stripsworld import STRIPSWorld
 import recipe_planner.utils as recipe_utils
 from recipe_planner.utils import *
-from delegation_planner.utils import SubtaskAllocDistribution
 
 # Navigation planner
 from navigation_planner.planners.qlearning import QLEARNING
