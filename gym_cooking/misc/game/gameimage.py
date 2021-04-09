@@ -7,9 +7,13 @@ from misc.game.game import Game
 
 
 class GameImage(Game):
-    def __init__(self, filename, world, sim_agents, record=False):
+    def __init__(self, filename, world, sim_agents, record=False, train=False):
         Game.__init__(self, world, sim_agents)
-        self.game_record_dir = 'misc/game/record/{}/'.format(filename)
+
+        if train:
+            self.game_record_dir = 'misc/game/record/trained_agent/{}/'.format(filename)
+        else:
+            self.game_record_dir = 'misc/game/record/{}/'.format(filename)
         self.record = record
 
 
@@ -22,8 +26,12 @@ class GameImage(Game):
                 os.makedirs(self.game_record_dir)
 
             # Clear game_record folder
-            for f in os.listdir(self.game_record_dir):
-                os.remove(os.path.join(self.game_record_dir, f))
+            # for f in os.listdir(self.game_record_dir):
+            #     try:
+            #         os.remove(os.path.join(self.game_record_dir, f))
+            #     except:
+            #         for sf in os.listdir(os.path.join(self.game_record_dir,f)):
+            #             os.remove(os.path.join(self.game_record_dir, f, sf))
 
     def get_image_obs(self):
         self.on_render()
@@ -37,6 +45,9 @@ class GameImage(Game):
                 img_rgb[j, i, 2] = color.r
         return img_rgb
 
-    def save_image_obs(self, t):
+    def save_image_obs(self, t, episode):
         self.on_render()
-        pygame.image.save(self.screen, '{}/t={:03d}.png'.format(self.game_record_dir, t))
+        if episode % 50 == 0 and episode > 99:
+            os.makedirs(self.game_record_dir+'/'+str(episode)+'/', exist_ok=True)
+            pygame.image.save(self.screen, '{}/t={:03d}.png'.format(os.path.join(self.game_record_dir, str(episode)), t))
+        

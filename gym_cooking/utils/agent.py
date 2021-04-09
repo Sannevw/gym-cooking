@@ -267,6 +267,7 @@ class SimAgent:
         self.action = (0, 0)
         self.has_delivered = False
 
+
     def __str__(self):
         return color(self.name[-1], self.color)
 

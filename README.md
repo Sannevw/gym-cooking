@@ -1,5 +1,10 @@
 # Code for OvercookedEnvironment (gym-cooking) and "Too many cooks: Bayesian inference for coordinating multi-agent collaboration"
 
+Changes:
+- Food initializes in 'chopped' state. This change made in core.py, ln 298-335 (classes Tomato, Lettuce, Onion). Example: 
+```class Onion(Food):
+    def __init__(self, state_index = 1): ```
+
 Code for ["Too many cooks: Bayesian inference for coordinating multi-agent collaboration"](https://arxiv.org/pdf/2003.11778.pdf), Winner of CogSci 2020 conference award in computational modelling. 
 
 Contents:

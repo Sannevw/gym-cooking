@@ -1,6 +1,6 @@
---t-
-*  p
---/-
+-t/*-
+-   -
+-p---
 
 SimpleTomato
 

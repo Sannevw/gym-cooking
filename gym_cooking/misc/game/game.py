@@ -12,6 +12,7 @@ def get_image(path):
     image = _image_library.get(path)
     if image == None:
         canonicalized_path = path.replace('/', os.sep).replace('\\', os.sep)
+        print("path: ", canonicalized_path)
         image = pygame.image.load(canonicalized_path)
         _image_library[path] = image
     return image
@@ -82,7 +83,10 @@ class Game:
         sl = self.scaled_location(gs.location)
         fill = pygame.Rect(sl[0], sl[1], self.scale, self.scale)
 
-        if isinstance(gs, Counter):
+        if isinstance(gs, Wall):
+            pygame.draw.rect(self.screen, Color.WALL, fill)
+            pygame.draw.rect(self.screen, Color.WALL_BORDER, fill, 1)            
+        elif isinstance(gs, Counter):
             pygame.draw.rect(self.screen, Color.COUNTER, fill)
             pygame.draw.rect(self.screen, Color.COUNTER_BORDER, fill, 1)
 

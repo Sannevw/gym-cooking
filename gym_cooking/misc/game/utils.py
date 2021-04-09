@@ -3,9 +3,11 @@ import pygame
 
 class Color:
     BLACK = (0, 0, 0)
-    FLOOR = (245, 230, 210)  # light gray
+    FLOOR = (252, 235, 215)  # light gray
     COUNTER = (220, 170, 110)   # tan/gray
     COUNTER_BORDER = (114, 93, 51)  # darker tan
+    WALL = (230, 194, 151)
+    WALL_BORDER = (32, 32, 32) #grey blackish
     DELIVERY = (96, 96, 96)  # grey
 
 KeyToTuple = {

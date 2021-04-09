@@ -25,6 +25,7 @@ def parse_arguments():
     parser.add_argument("--max-num-subtasks", type=int, default=14, help="Max number of subtasks for recipe")
     parser.add_argument("--seed", type=int, default=1, help="Fix pseudorandom seed")
     parser.add_argument("--with-image-obs", action="store_true", default=False, help="Return observations as images (instead of objects)")
+    parser.add_argument("--train", action="store_true", default=False, help="Save observation at each time step as an image in misc/game/record")
 
     # Delegation Planner
     parser.add_argument("--beta", type=float, default=1.3, help="Beta for softmax in Bayesian delegation updates")
@@ -86,8 +87,13 @@ def main_loop(arglist):
     """The main loop for running experiments."""
     print("Initializing environment and agents.")
     env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
+
     obs = env.reset()
-    # game = GameVisualize(env)
+
+    # visualize the environment, e.g. env.render()
+    #env.display()
+
+
     real_agents = initialize_agents(arglist=arglist)
 
     # Info bag for saving pkl files
@@ -101,6 +107,7 @@ def main_loop(arglist):
             action = agent.select_action(obs=obs)
             action_dict[agent.name] = action
 
+        # take the action and retrieve obs and reward
         obs, reward, done, info = env.step(action_dict=action_dict)
 
         # Agents

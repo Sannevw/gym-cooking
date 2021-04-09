@@ -13,70 +13,32 @@ import recipe_planner
 
 recipes = [
         "tomato",
-       # "tl",
-        #"salad"
     ]
 total_num_subtasks = {
         "tomato": 3,
-      #  "tl": 6,
-      #  "salad": 5
     }
-models = [
-     #  "_model1-bd_model2-bd",
-      # "_model1-up_model2-up",
-      # "_model1-fb_model2-fb",
-      # "_model1-dc_model2-dc",
-       "_model1-greedy_model2-greedy",
-    ]
-model_key = {
-   # "_model1-bd_model2-bd": "BD (ours)",
-    #"_model1-up_model2-up": "UP",
-    #"_model1-fb_model2-fb": "FB",
-    #"_model1-dc_model2-dc": "D&C",
-    "_model1-greedy_model2-greedy": "Greedy",
-}
 maps = [
-      #  "full-divider",
         "open-divider",
-       # "partial-divider"
         ]
-seeds = range(1,10)
-agents = ['agent-1'] #'agent-2', 'agent-3', 'agent-4']
-agents2_optimal = {
-    "open-divider": {"tomato": 15, "tl": 25, "salad": 24},
-    "partial-divider": {"tomato": 17, "tl": 31, "salad": 21},
-    "full-divider": {"tomato": 17, "tl": 31, "salad": 21}
-}
-agents3_optimal = {
-    "open-divider": {"tomato": 12, "tl": 22, "salad": 15},
-    "partial-divider": {"tomato": 12, "tl": 22, "salad": 16},
-    "full-divider": {"tomato": 13, "tl": 24, "salad": 19}
-}
-time_steps_optimal = {2: agents2_optimal, 3: agents3_optimal}
+seeds = [1]
+agents = ['agent-1']
 
 ylims = {
-    'time_steps': [0, 100],
-    'shuffles': [0, 55],
-    'priors': [0, 100],
-    'completion': [0, 1],
+    'time_steps': [0, 500],
+    'total_rewards': [-5000, 5000]
 }
 
 ylabels = {
     'time_steps': 'Time',
-    'completion': 'Completion',
-    'shuffles': 'Shuffles',
-    'priors': 'Time',
-    'completion': 'Completion'
+    'total_rewards': 'Total Rewards'
 }
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="for parsing")
-    parser.add_argument("--num-agents", type=int, default=2, help="number of agents")
+    parser.add_argument("--num-agents", type=int, default=1, help="number of agents")
     parser.add_argument("--stats", action="store_true", default=False, help="run and print out summary statistics")
     parser.add_argument("--time-steps", action="store_true", default=False, help="make graphs for time_steps")
-    parser.add_argument("--completion", action="store_true", default=False, help="make graphs for completion")
-    parser.add_argument("--shuffles", action="store_true", default=False, help="make graphs for shuffles")
     parser.add_argument("--legend", action="store_true", default=False, help="make legend alongside graphs")
     return parser.parse_args()
 
@@ -85,27 +47,54 @@ def run_main():
     #path_pickles = '/Users/custom/path/to/pickles'
     path_pickles = os.path.join(os.getcwd(), 'pickles/today')
     #path_save = '/Users/custom/path/to/save/to'
-    path_save = os.path.join(os.getcwd(), 'graphs_agents{}'.format(arglist.num_agents))
+    path_save = os.path.join(os.getcwd(), 'reward_graphs_agents{}'.format(arglist.num_agents))
     if not os.path.exists(path_save):
         os.makedirs(path_save)
 
-    if arglist.stats:
-        compute_stats(path_pickles, arglist.num_agents)
-        return
-
-    if arglist.time_steps:
-        key = 'time_steps'
-    elif arglist.completion:
-        key = 'completion'
-    elif arglist.shuffles:
-        key = 'shuffles'
-    else:
-        return
-    df = import_data(key, path_pickles, arglist.num_agents)
+    data = import_data(path_pickles, arglist.num_agents)
     print('done loading pickle data')
-    print("DF: ", df)
+    print("DF: ", data)
+    plot_rewards(data)
     quit()
-    plot_data(key, path_save, df, arglist.num_agents, legend=arglist.legend)
+    #plot_data(key, path_save, df, arglist.num_agents, legend=arglist.legend)
+
+def import_data(path_pickles, num_agents):
+    # df = list()
+
+    # for recipe, map_, seed in itertools.product(recipes, maps, seeds):
+    #     info = {
+    #         "map": map_,
+    #         "seed": seed,
+    #         "recipe": recipe,
+    #         "dummy": 0
+    #     }
+
+    # LOAD IN FILE
+    fname = 'open-divider_tomato_agents1_seed1.pkl'
+    print("path: ", path_pickles) #'{}_{}_agents{}_seed{}{}.pkl'.format(map_, recipe, num_agents, seed, model)
+    if os.path.exists(os.path.join(path_pickles, fname)):
+        try:
+            data = pickle.load(open(os.path.join(path_pickles, fname), "rb"))
+            print("===try loading data===")
+        except:
+            print("trouble loading: {}".format(fname))
+    return data
+
+def plot_rewards(data):
+    rewards = []
+    xaxis = []
+
+    for i, episode in enumerate(data.keys()):
+        # TOTAL REWARDS
+        tr = data[i]['total_rewards']
+        rewards.append(tr)
+        xaxis.append(i+1)
+        #df.append(dict({'episode': i, 'tr': tr}, **info))
+            
+    fig = plt.figure()
+    ax = plt.axes()
+    plt.plot(xaxis, rewards)
+    plt.show()
 
 
 def compute_stats(path_pickles, num_agents):
@@ -134,37 +123,6 @@ def compute_stats(path_pickles, num_agents):
         print('     shuffles: {:.3f} +/- {:.3f}'.format(np.mean(np.array(num_shuffles)), np.std(np.array(num_collisions))/np.sqrt(len(num_shuffles))))
 
 
-def import_data(key, path_pickles, num_agents):
-    df = list()
-
-    for recipe, model, map_, seed in itertools.product(recipes, models, maps, seeds):
-        info = {
-            "map": map_,
-            "seed": seed,
-            "recipe": recipe,
-            'model': model_key[model],
-            "dummy": 0
-        }
-
-        # LOAD IN FILE
-        fname = 'open-divider_tomato_agents1_seed1.pkl' #'{}_{}_agents{}_seed{}{}.pkl'.format(map_, recipe, num_agents, seed, model)
-        if os.path.exists(os.path.join(path_pickles, fname)):
-            try:
-                data = pickle.load(open(os.path.join(path_pickles, fname), "rb"))
-            except:
-                print("trouble loading: {}".format(fname))
-        else:
-            print('no file:', fname)
-            continue
-
-        # TIME STEPS
-        if key == 'time_steps':
-            time_steps = get_time_steps(data, recipe)
-            print("{}: {}".format(fname, time_steps))
-            df.append(dict(time_steps = time_steps, **info))
-
-        if key == 'qtable':
-            print("qtable: \n", data['qtable'])
 
         # COMPLETION
         # elif key == 'completion':

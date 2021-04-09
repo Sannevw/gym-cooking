@@ -1,0 +1,71 @@
+# Code for OvercookedEnvironment (gym-cooking) and "Too many cooks: Bayesian inference for coordinating multi-agent collaboration"
+
+A modified version of the code from ["Too many cooks: Bayesian inference for coordinating multi-agent collaboration"](https://arxiv.org/pdf/2003.11778.pdf), to let a single agent train using Simple Q-learning, for a simplified environment.
+
+For the original code for ["Too many cooks: Bayesian inference for coordinating multi-agent collaboration"](https://arxiv.org/pdf/2003.11778.pdf), Winner of CogSci 2020 conference award in computational modelling, see the [original repository](https://github.com/rosewang2008/gym-cooking)
+
+Please use this bibtex if you want to cite this repository in your publications:
+```
+@article{wang2020too,
+  title={Too many cooks: Coordinating multi-agent collaboration through inverse planning},
+  author={Wang, Rose E and Wu, Sarah A and Evans, James A and Tenenbaum, Joshua B and Parkes, David C and Kleiman-Weiner, Max},
+  journal={arXiv preprint arXiv:2003.11778},
+  year={2020}
+}
+```
+Contents:
+- [Installation](#installation)
+- [Usage](#usage)
+- [Environments and Recipes](docs/environments.md)
+- [Design and Customization](docs/design.md)
+
+## Installation
+
+You can install the dependencies with `pip3`:
+```
+git clone -b simple_qlearning https://github.com/Sannevw/gym-cooking.git
+cd gym-cooking
+pip3 install -e .
+```
+
+All experiments have been run with `python3`! 
+
+## Usage 
+
+Here, we discuss how to run a single experiment, run our code in manual mode, and re-produce results in our paper. For information on customizing environments, observation/action spaces, and other details, please refer to our section on [Design and Customization](docs/design.md)
+
+For the code below, make sure that you are in **gym-cooking/gym_cooking/**. This means, you should be able to see the file `main.py` in your current directory.
+
+<p align="center">
+    <img src="images/2_open.png" width=260></img>
+    <img src="images/3_partial.png" width=260></img>
+    <img src="images/4_full.png" width=260></img>
+</p>
+
+### Running an experiment 
+
+The basic structure of our commands is the following:
+
+`python main_svw.py --num-agents 1 --level <level name>`
+
+where `<number>` is always 1 but argument kept for potential upscaling, `level name` are the names of levels available under the directory `cooking/utils/levels`, omitting the `.txt`.
+
+For example, running the salad recipe on a 3x6 grid looks like:
+`python main_svw.py --num-agents=1 --level salad_3x6grid`
+
+Although our work uses object-oriented representations for observations/states, the `OvercookedEnvironment.step` function returns *image observations* in the `info` object. They can be retrieved with `info['image_obs']`.  
+
+### Additional commands
+
+The above commands can also be appended with the following flags:
+* `--record` will save the observation at each time step as an image in `misc/game/record`.
+
+### Manual control
+
+To manually control agents and explore the environment, append the `--play` flag to the above commands. Specifying the model names isn't necessary but the level and the number of agents is still required. For instance, to manually control 2 agents with the salad task on the open divider, run:
+
+`python main.py --num-agents 2 --level open-divider_salad --play`
+
+This will open up the environment in Pygame. Only one agent can be controlled at a time -- the current active agent can be moved with the arrow keys and toggled by pressing `1`, `2`, `3`, or `4` (up until the actual number of agents of course). Hit the Enter key to save a timestamped image of the current screen to `misc/game/screenshots`.
+
+

@@ -13,35 +13,46 @@ import recipe_planner
 
 recipes = [
         "tomato",
-       # "tl",
-        #"salad"
+        # "tl",
+        # "salad"
     ]
 total_num_subtasks = {
         "tomato": 3,
-      #  "tl": 6,
-      #  "salad": 5
+        "tl": 6,
+        "salad": 5
     }
+
 models = [
-     #  "_model1-bd_model2-bd",
-      # "_model1-up_model2-up",
-      # "_model1-fb_model2-fb",
-      # "_model1-dc_model2-dc",
-       "_model1-greedy_model2-greedy",
-    ]
+    "_model1-greedy",
+]
+# models = [
+#        "_model1-bd_model2-bd",
+#        "_model1-up_model2-up",
+#        "_model1-fb_model2-fb",
+#        "_model1-dc_model2-dc",
+#        "_model1-greedy_model2-greedy",
+#     ]
 model_key = {
-   # "_model1-bd_model2-bd": "BD (ours)",
-    #"_model1-up_model2-up": "UP",
-    #"_model1-fb_model2-fb": "FB",
-    #"_model1-dc_model2-dc": "D&C",
-    "_model1-greedy_model2-greedy": "Greedy",
+    "_model1-greedy": "Greedy",
 }
+# model_key = {
+#     "_model1-bd_model2-bd": "BD (ours)",
+#     "_model1-up_model2-up": "UP",
+#     "_model1-fb_model2-fb": "FB",
+#     "_model1-dc_model2-dc": "D&C",
+#     "_model1-greedy_model2-greedy": "Greedy",
+# }
 maps = [
-      #  "full-divider",
+        #"full-divider",
         "open-divider",
-       # "partial-divider"
+        #"partial-divider"
         ]
 seeds = range(1,10)
-agents = ['agent-1'] #'agent-2', 'agent-3', 'agent-4']
+agents = ['agent-1', 'agent-2', 'agent-3', 'agent-4']
+
+agents1_optimal = {
+    "open-divider": {"tomato": 18},
+}
 agents2_optimal = {
     "open-divider": {"tomato": 15, "tl": 25, "salad": 24},
     "partial-divider": {"tomato": 17, "tl": 31, "salad": 21},
@@ -52,7 +63,7 @@ agents3_optimal = {
     "partial-divider": {"tomato": 12, "tl": 22, "salad": 16},
     "full-divider": {"tomato": 13, "tl": 24, "salad": 19}
 }
-time_steps_optimal = {2: agents2_optimal, 3: agents3_optimal}
+time_steps_optimal = {1: agents1_optimal, 2: agents2_optimal, 3: agents3_optimal}
 
 ylims = {
     'time_steps': [0, 100],
@@ -83,7 +94,7 @@ def parse_arguments():
 
 def run_main():
     #path_pickles = '/Users/custom/path/to/pickles'
-    path_pickles = os.path.join(os.getcwd(), 'pickles/today')
+    path_pickles = os.path.join(os.getcwd(), 'pickles')
     #path_save = '/Users/custom/path/to/save/to'
     path_save = os.path.join(os.getcwd(), 'graphs_agents{}'.format(arglist.num_agents))
     if not os.path.exists(path_save):
@@ -103,8 +114,7 @@ def run_main():
         return
     df = import_data(key, path_pickles, arglist.num_agents)
     print('done loading pickle data')
-    print("DF: ", df)
-    quit()
+
     plot_data(key, path_save, df, arglist.num_agents, legend=arglist.legend)
 
 
@@ -147,7 +157,8 @@ def import_data(key, path_pickles, num_agents):
         }
 
         # LOAD IN FILE
-        fname = 'open-divider_tomato_agents1_seed1.pkl' #'{}_{}_agents{}_seed{}{}.pkl'.format(map_, recipe, num_agents, seed, model)
+        fname = '{}_{}_agents{}_seed{}{}.pkl'.format(map_, recipe, num_agents, seed, model)
+
         if os.path.exists(os.path.join(path_pickles, fname)):
             try:
                 data = pickle.load(open(os.path.join(path_pickles, fname), "rb"))
@@ -163,19 +174,16 @@ def import_data(key, path_pickles, num_agents):
             print("{}: {}".format(fname, time_steps))
             df.append(dict(time_steps = time_steps, **info))
 
-        if key == 'qtable':
-            print("qtable: \n", data['qtable'])
-
         # COMPLETION
-        # elif key == 'completion':
-        #     for t in range(100):
-        #         n = get_completion(data, recipe, t)
-        #         df.append(dict({'t': t-1, 'n': n}, **info))
+        elif key == 'completion':
+            for t in range(100):
+                n = get_completion(data, recipe, t)
+                df.append(dict({'t': t-1, 'n': n}, **info))
 
         # SHUFFLES
-        # elif key == 'shuffles':
-        #     shuffles = get_shuffles(data, recipe)   # a dict
-        #     df.append(dict(shuffles = np.mean(np.array(list(shuffles.values()))), **info))
+        elif key == 'shuffles':
+            shuffles = get_shuffles(data, recipe)   # a dict
+            df.append(dict(shuffles = np.mean(np.array(list(shuffles.values()))), **info))
             # for agent in agents:
             #     info['agent'] = agent
             #     df.append(dict(shuffles = shuffles[agent], **info))
@@ -235,14 +243,10 @@ def plot_data(key, path_save, df, num_agents, legend=False):
     color_palette = sns.color_palette()
     sns.set_style('ticks')
     sns.set_context('talk', font_scale=1)
-    print("df: ", df)
 
     for i, recipe in enumerate(recipes):
         for j, map_ in enumerate(maps):
-            try:
-                data = df.loc[(df['map']==map_) & (df['recipe']==recipe), :]
-            except:
-                continue
+            data = df.loc[(df['map']==map_) & (df['recipe']==recipe), :]
             if len(data) == 0:
                 print('empty data on ', (recipe, map_))
                 continue
@@ -253,9 +257,8 @@ def plot_data(key, path_save, df, num_agents, legend=False):
                 # plot ours last
                 hue_order = hue_order[1:] + [hue_order[0]]
                 color_palette = sns.color_palette()[1:5] + [sns.color_palette()[0]]
-
                 ax = sns.lineplot(x = 't', y = 'n', hue="model", data=data,
-                    linewidth=5, legend=False, hue_order=hue_order, palette=color_palette, n_colors=3)
+                    linewidth=5, legend=False, hue_order=hue_order, palette=color_palette)
                 plt.xlabel('Steps')
                 plt.ylim([0, 1]),
                 plt.xlim([0, 100])
@@ -309,3 +312,5 @@ def plot_data(key, path_save, df, num_agents, legend=False):
 if __name__ == "__main__":
     arglist = parse_arguments()
     run_main()
+
+

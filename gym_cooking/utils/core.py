@@ -18,12 +18,15 @@ GridSquareRepr = namedtuple("GridSquareRepr", "name location holding")
 class Rep:
     FLOOR = ' '
     COUNTER = '-'
+    WALL = '='
     CUTBOARD = '/'
     DELIVERY = '*'
     TOMATO = 't'
     LETTUCE = 'l'
     ONION = 'o'
     PLATE = 'p'
+    CHEESE = 'c'
+    BREAD = 'b'
 
 class GridSquare:
     def __init__(self, name, location):
@@ -71,6 +74,15 @@ class Counter(GridSquare):
     def __init__(self, location):
         GridSquare.__init__(self,"Counter", location)
         self.rep = Rep.COUNTER
+    def __eq__(self, other):
+        return GridSquare.__eq__(self, other)
+    def __hash__(self):
+        return GridSquare.__hash__(self)
+
+class Wall(GridSquare):
+    def __init__(self, location):
+        GridSquare.__init__(self,"Wall", location)
+        self.rep = Rep.WALL
     def __eq__(self, other):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
@@ -179,6 +191,7 @@ class Object:
         self.contents[0].update_state()
         assert not (self.needs_chopped())
         self.update_names()
+        return 1
 
     def merge(self, obj):
         if isinstance(obj, Object):
@@ -290,6 +303,7 @@ class Tomato(Food):
         self.state_seq = FoodSequence.FRESH_CHOPPED
         self.rep = 't'
         self.name = 'Tomato'
+
         Food.__init__(self)
     def __hash__(self):
         return Food.__hash__(self)
@@ -322,6 +336,35 @@ class Onion(Food):
     def __hash__(self):
         return Food.__hash__(self)
 
+class Bread(Food):
+    def __init__(self, state_index = 0):
+        self.state_index = state_index   # index in food's state sequence
+        self.state_seq = FoodSequence.FRESH_CHOPPED
+
+        self.rep = 'b'
+        self.name = 'Bread'
+        Food.__init__(self)
+    def __hash__(self):
+        return Food.__hash__(self)
+    def __eq__(self, other):
+        return Food.__eq__(self, other)
+    def __str__(self):
+        return Food.__str__(self)
+
+class Cheese(Food):
+    def __init__(self, state_index = 1):
+        self.state_index = state_index   # index in food's state sequence
+        self.state_seq = FoodSequence.FRESH_CHOPPED
+        self.rep = 'c'
+        self.name = 'Cheese'
+
+        Food.__init__(self)
+    def __hash__(self):
+        return Food.__hash__(self)
+    def __eq__(self, other):
+        return Food.__eq__(self, other)
+    def __str__(self):
+        return Food.__str__(self)
 
 # -----------------------------------------------------------
 
@@ -349,12 +392,15 @@ class Plate:
 RepToClass = {
     Rep.FLOOR: globals()['Floor'],
     Rep.COUNTER: globals()['Counter'],
+    Rep.WALL: globals()['Wall'],
     Rep.CUTBOARD: globals()['Cutboard'],
     Rep.DELIVERY: globals()['Delivery'],
     Rep.TOMATO: globals()['Tomato'],
     Rep.LETTUCE: globals()['Lettuce'],
     Rep.ONION: globals()['Onion'],
     Rep.PLATE: globals()['Plate'],
+    Rep.BREAD: globals()['Bread'],
+    Rep.CHEESE: globals()['Cheese'],
 }
 
 

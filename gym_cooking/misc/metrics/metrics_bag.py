@@ -5,7 +5,7 @@ class Bag:
     def __init__(self, arglist, filename):
         self.data = {}
         self.arglist = arglist
-        self.directory = "misc/metrics/pickles/"
+        self.directory = "misc/metrics/pickles/today/"
         self.filename = filename
         self.set_general()
 

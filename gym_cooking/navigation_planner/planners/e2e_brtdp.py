@@ -63,6 +63,7 @@ class E2E_BRTDP:
         self.v_u = {}
         self.repr_to_env_dict = dict()
         self.start = None
+        #min priority queue
         self.pq = mpq()
         self.actions = World.NAV_ACTIONS
         self.is_joint = False
@@ -175,6 +176,22 @@ class E2E_BRTDP:
             # as state `x`.
             modified_state, other_agent_actions = self._get_modified_state_with_other_agent_actions(x)
             modified_state_repr = modified_state.get_repr()
+            print("Modified state: ", modified_state)
+
+            '''Modified state looks like: the environment, e.g.
+             - - - - 
+            / 1   - 
+            /     p 
+            *     - 
+            - - - - 
+
+            Whereas the state repr is:
+            ((ObjectRepr(name='Plate', location=(3, 2), is_held=False),), (ObjectRepr(name='ChoppedTomato', location=(1, 1), is_held=True),), 
+                                        AgentRepr(name='agent-1', location=(1, 1), holding='ChoppedTomato'))
+
+
+            '''
+            print("\n self.v_u: ", self.v_u)
 
             # Get available actions from this state.
             actions = self.get_actions(state_repr=modified_state_repr)
