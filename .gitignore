@@ -4,6 +4,7 @@
 *.pkl
 *.pdf
 *.mov
+*.idea 
 
 # Metrics and data
 gym_cooking/misc/metrics/*data*/
@@ -19,6 +20,10 @@ gym_cooking/misc/visualizations/
 
 # Human experiments
 gym_cooking/human_experiments/
+
+# User-specific stuff
+.idea/**/workspace.xml
+
 
 # Pycache dir
 __pycache__
