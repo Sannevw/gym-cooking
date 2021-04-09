@@ -49,12 +49,6 @@ Here, we discuss how to run a single experiment, run our code in manual mode, an
 
 For the code below, make sure that you are in **gym-cooking/gym_cooking/**. This means, you should be able to see the file `main.py` in your current directory.
 
-<p align="center">
-    <img src="images/2_open.png" width=260></img>
-    <img src="images/3_partial.png" width=260></img>
-    <img src="images/4_full.png" width=260></img>
-</p>
-
 ### Training an agent
 
 The basic structure of our commands is the following:
